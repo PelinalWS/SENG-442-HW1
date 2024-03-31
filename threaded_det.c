@@ -171,9 +171,7 @@ int* readMatrix(char* filename){
         int i = 0;
         while(fscanf(f, "%d ", &matrix[i]) == 1 && i < MAX_SIZE * MAX_SIZE){
             i++;
-            printf("%d ", i);
         }
-        printf("haaaa");
         fclose(f);
         return matrix;
     }
