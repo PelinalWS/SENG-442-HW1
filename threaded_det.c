@@ -14,103 +14,11 @@ struct ThreadData {
     int result;     // Partial result (determinant)
 };
 
-// Function to calculate determinant of a submatrix
-void* detCalc(void* arg) {
-    struct ThreadData* data = (struct ThreadData*)arg;
-    int* matrix = data->matrix;
-    int n = data->n;
-    int column = data->column;
-    int sign = data->sign;
-    int result = 0;
-
-    if (n == 1) {
-        // Base case: determinant of 1x1 matrix is the element itself
-        result = matrix[0];
-    } else {
-        // Allocate memory for temporary matrix
-        int* temp = malloc((n - 1) * (n - 1) * sizeof(int));
-        if (temp == NULL) {
-            perror("Memory allocation failed");
-            exit(EXIT_FAILURE);
-        }
-
-        int temp_row = 0;
-        for (int i = 1; i < n; i++) {
-            int temp_col = 0;
-            for (int j = 0; j < n; j++) {
-                if (j != column) {
-                    temp[temp_row * (n - 1) + temp_col] = matrix[i * n + j];
-                    temp_col++;
-                }
-            }
-            temp_row++;
-        }
-
-        // Recursive calculation of submatrix determinants
-        for (int j = 0; j < n - 1; j++) {
-
-        }
-
-        free(temp);
-    }
-
-    // Store the partial result in the data structure
-    data->result = result;
-
-    pthread_exit(NULL);
-}
-
-int calc(int *matrix, int row, int column){
-    int n = MAX_SIZE - row;
-    int determinant = 0;
-
-    int* temp = malloc((n - 1) * (n - 1) * sizeof(int));
-    if (temp == NULL) {
-        perror("Memory allocation failed");
-        exit(EXIT_FAILURE);
-    }
-
-    int temp_row = 0;
-    for (int i = 1; i < n; i++) {
-        int temp_col = 0;
-        for (int j = 0; j < n; j++) {
-            if (j != column) {
-                temp[temp_row * (n - 1) + temp_col] = matrix[i * n + j];
-                temp_col++;
-            }
-        }
-        temp_row++;
-    }
-    return determinant;
-}
-
-// Function to calculate determinant using Laplace expansion
-int laplaceDet(int* matrix, int n) {
-    int determinant = 0;
-    struct ThreadData* thread_data[NUM_THREADS];
-    pthread_t tid[NUM_THREADS];
-
-    // Create threads to calculate determinants of submatrices
-    for (int i = 0; i < NUM_THREADS; i++) {
-        thread_data[i] = malloc(sizeof(struct ThreadData));
-        thread_data[i]->matrix = matrix;
-        thread_data[i]->n = n;
-        thread_data[i]->column = i * (n / NUM_THREADS); // Divide columns evenly among threads
-        pthread_create(&tid[i], NULL, detCalc, thread_data[i]);
-    }
-
-    // Wait for all threads to finish and accumulate partial results
-    for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_join(tid[i], NULL);
-        determinant += thread_data[i]->result;
-        free(thread_data[i]);
-    }
-
-    return determinant;
-}
-
 void writeMatrix();
 int* readMatrix(char* filename);
+int laplaceDet(int* matrix, int n);
+void* calcDet(void* arg);
+int calcRec(int *matrix, int row, int column);
 
 // Main function
 int main() {
@@ -160,4 +68,77 @@ int* readMatrix(char* filename){
         fclose(f);
         return matrix;
     }
+}
+
+int laplaceDet(int* matrix, int n) {
+    int determinant = 0;
+    struct ThreadData* thread_data[NUM_THREADS];
+    pthread_t tid[NUM_THREADS];
+
+    // Create threads to calculate determinants of submatrices
+    for (int i = 0; i < NUM_THREADS; i++) {
+        thread_data[i] = malloc(sizeof(struct ThreadData));
+        thread_data[i]->matrix = matrix;
+        thread_data[i]->n = n;
+        thread_data[i]->column = i * (n / NUM_THREADS); // Divide columns evenly among threads
+        pthread_create(&tid[i], NULL, calcDet, thread_data[i]);
+    }
+
+    // Wait for all threads to finish and accumulate partial results
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(tid[i], NULL);
+        determinant += thread_data[i]->result;
+        free(thread_data[i]);
+    }
+    return determinant;
+}
+
+void* calcDet(void* arg) {
+    struct ThreadData* data = (struct ThreadData*)arg;
+    int* matrix = data->matrix;
+    int n = data->n;
+    int column = data->column;
+    int sign = data->sign;
+    int result = 0;
+
+    // Store the partial result in the data structure
+    data->result = result;
+
+    for(int i = 0; i < MAX_SIZE/NUM_THREADS; i++) {
+        result += calcRec(matrix, 0, 0);
+    }
+    data->result = result;
+    pthread_exit(NULL);
+}
+
+int calcRec(int *matrix, int row, int column){
+    int n = MAX_SIZE - row;
+    int determinant = 0;
+    // Base case: determinant of 1x1 matrix is the element itself
+    if (n == 1) {
+        determinant = matrix[0];
+    } else {
+        int* temp = malloc((n - 1) * (n - 1) * sizeof(int));
+        if (temp == NULL) {
+            perror("Memory allocation failed");
+            exit(EXIT_FAILURE);
+        }
+        for (int i = 1, temp_row = 0; i < n; i++, temp_row++) {
+            int temp_col = 0;
+            for (int j = 0, temp_col = 0; j < n; j++) {
+                if (j != column) {
+                    temp[temp_row * (n - 1) + temp_col] = matrix[i * n + j];
+                    temp_col++;
+                }
+            }
+        }
+        for(int i = 0; i < n; i++){
+            if(i % 2 == 0) {
+                determinant += calcRec(temp, row + 1, column + i);
+            } else {
+                determinant -= calcRec(temp, row + 1, column + i);
+            }
+        }
+    }
+    return determinant;
 }
