@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#define MAX_SIZE 32
+#define MAX_SIZE 4
 #define NUM_THREADS 4
 
 // Structure to pass parameters to threads
@@ -23,8 +23,9 @@ int calcRec(int *matrix, int row, int column);
 // Main function
 int main() {
     writeMatrix();
-    int* matrix = readMatrix("det.txt");/*
+    int* matrix = readMatrix("det.txt");
     // Print the matrix (for demonstration)
+    /*
     printf("Matrix:\n");
     for (int i = 0; i < MAX_SIZE; i++) {
         for (int j = 0; j < MAX_SIZE; j++) {
@@ -32,7 +33,7 @@ int main() {
         }
         printf("\n");
     }
-    printf("HAAAAAAAAAAAAAAAAAAAAA\n");*/
+    */
     // Calculate determinant using Laplace expansion
     int determinant = laplaceDet(matrix, MAX_SIZE);
     printf("Determinant: %d\n", determinant);
@@ -75,8 +76,7 @@ int laplaceDet(int* matrix, int n) {
     struct ThreadData* thread_data[NUM_THREADS];
     pthread_t tid[NUM_THREADS];
 
-    // Create threads to calculate determinants of submatrices
-    for (int i = 0; i < NUM_THREADS; i++) {
+    for(int i = 0; i < NUM_THREADS; i++) {
         thread_data[i] = malloc(sizeof(struct ThreadData));
         thread_data[i]->matrix = matrix;
         thread_data[i]->n = n;
@@ -84,10 +84,9 @@ int laplaceDet(int* matrix, int n) {
         pthread_create(&tid[i], NULL, calcDet, thread_data[i]);
     }
 
-    // Wait for all threads to finish and accumulate partial results
-    for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_join(tid[i], NULL);
+    for(int i = 0; i < NUM_THREADS; i++) {
         determinant += thread_data[i]->result;
+        pthread_join(tid[i], NULL);
         free(thread_data[i]);
     }
     return determinant;
@@ -105,7 +104,11 @@ void* calcDet(void* arg) {
     data->result = result;
 
     for(int i = 0; i < MAX_SIZE/NUM_THREADS; i++) {
-        result += calcRec(matrix, 0, 0);
+        if(i % 2 == 0){
+            result += calcRec(matrix, 0, 0);
+        } else {
+            result -= calcRec(matrix, 0, 0);
+        }
     }
     data->result = result;
     pthread_exit(NULL);
