@@ -18,7 +18,7 @@ void writeMatrix();
 int* readMatrix(char* filename);
 int laplaceDet(int* matrix, int n);
 void* calcDet(void* arg);
-int calcRec(int *matrix, int row, int column);
+int calcRec(int *matrix, int row, int column, int tid);
 
 // Main function
 int main() {
@@ -44,7 +44,7 @@ void writeMatrix(){
     FILE *f;
     f = fopen("det.txt", "w");
     for(int i = 0; i < MAX_SIZE * MAX_SIZE;){
-        fprintf(f, "%d ", (int)(rand() % 100));
+        fprintf(f, "%d ", (int)(rand() % 10));
         i++;
         if(i % MAX_SIZE == 0 && i != 0){
             fprintf(f, "\n");
@@ -81,6 +81,7 @@ int laplaceDet(int* matrix, int n) {
         thread_data[i]->matrix = matrix;
         thread_data[i]->n = n;
         thread_data[i]->column = i * (n / NUM_THREADS); // Divide columns evenly among threads
+        thread_data[i]->sign = 1;
         pthread_create(&tid[i], NULL, calcDet, thread_data[i]);
     }
 
@@ -98,23 +99,20 @@ void* calcDet(void* arg) {
     int n = data->n;
     int column = data->column;
     int sign = data->sign;
-    int result = 0;
 
     // Store the partial result in the data structure
-    data->result = result;
 
     for(int i = 0; i < MAX_SIZE/NUM_THREADS; i++) {
         if(i % 2 == 0){
-            result += calcRec(matrix, 0, 0);
+            data->result += calcRec(matrix, 0, 0, column);
         } else {
-            result -= calcRec(matrix, 0, 0);
+            data->result -= calcRec(matrix, 0, 0, column);
         }
     }
-    data->result = result;
     pthread_exit(NULL);
 }
 
-int calcRec(int *matrix, int row, int column){
+int calcRec(int *matrix, int row, int column, int tid){
     int n = MAX_SIZE - row;
     int determinant = 0;
     // Base case: determinant of 1x1 matrix is the element itself
@@ -127,19 +125,36 @@ int calcRec(int *matrix, int row, int column){
             exit(EXIT_FAILURE);
         }
         for (int i = 1, temp_row = 0; i < n; i++, temp_row++) {
-            int temp_col = 0;
+            
             for (int j = 0, temp_col = 0; j < n; j++) {
                 if (j != column) {
                     temp[temp_row * (n - 1) + temp_col] = matrix[i * n + j];
+                    printf("|%d : %d| ", tid, matrix[i*n +j]);
                     temp_col++;
                 }
+                printf("\n");
             }
+/*
+3 6 7 5 
+3 5 6 2 
+9 1 2 7 
+0 9 3 6 
+        5 6 2
+3 ->    1 2 7   
+        9 3 6
+
+5 ->    2 7         6-> 1 7         2-> 1 2
+        3 6             9 6             9 3
+
+2-> 6   7->3        1->6    7->9        1->3    2->9
+
+*/
         }
         for(int i = 0; i < n; i++){
             if(i % 2 == 0) {
-                determinant += calcRec(temp, row + 1, column + i);
+                determinant += calcRec(temp, row + 1, column + i, tid);
             } else {
-                determinant -= calcRec(temp, row + 1, column + i);
+                determinant -= calcRec(temp, row + 1, column + i, tid);
             }
         }
     }
