@@ -60,9 +60,14 @@ void* detCalc(void* arg) {
     pthread_exit(NULL);
 }
 
-int calc(int *matrix, int row, int column){
+int calc(int *matrix, int row, int column) {
     int n = MAX_SIZE - row;
     int determinant = 0;
+
+    if (n == 1) {
+        // Base case: determinant of 1x1 matrix is the element itself
+        return matrix[row * MAX_SIZE + column];
+    }
 
     int* temp = malloc((n - 1) * (n - 1) * sizeof(int));
     if (temp == NULL) {
@@ -75,14 +80,23 @@ int calc(int *matrix, int row, int column){
         int temp_col = 0;
         for (int j = 0; j < n; j++) {
             if (j != column) {
-                temp[temp_row * (n - 1) + temp_col] = matrix[i * n + j];
+                temp[temp_row * (n - 1) + temp_col] = matrix[(i + row) * MAX_SIZE + j];
                 temp_col++;
             }
         }
         temp_row++;
     }
+
+    int sign = 1;
+    for (int j = 0; j < n - 1; j++) {
+        determinant += sign * matrix[row * MAX_SIZE + j] * calc(temp, row + 1, j);
+        sign = -sign; // Alternate sign for cofactors
+    }
+
+    free(temp);
     return determinant;
 }
+
 
 // Function to calculate determinant using Laplace expansion
 int laplaceDet(int* matrix, int n) {
@@ -126,7 +140,8 @@ int main() {
     }
     printf("HAAAAAAAAAAAAAAAAAAAAA\n");*/
     // Calculate determinant using Laplace expansion
-    int determinant = laplaceDet(matrix, MAX_SIZE);
+    // int determinant = laplaceDet(matrix, MAX_SIZE);
+    int determinant = calc(matrix, 0, 0);
     printf("Determinant: %d\n", determinant);
     return 0;
 }
@@ -156,7 +171,9 @@ int* readMatrix(char* filename){
         int i = 0;
         while(fscanf(f, "%d ", &matrix[i]) == 1 && i < MAX_SIZE * MAX_SIZE){
             i++;
+            printf("%d ", i);
         }
+        printf("haaaa");
         fclose(f);
         return matrix;
     }
