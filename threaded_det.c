@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <time.h>
 
-#define MAX_SIZE 4
+#define MAX_SIZE 16
 #define NUM_THREADS 4
 
 // Structure to pass parameters to threads
@@ -24,19 +25,14 @@ int calcRec(int *matrix, int row, int column, int tid);
 int main() {
     writeMatrix();
     int* matrix = readMatrix("det.txt");
-    // Print the matrix (for demonstration)
-    /*
-    printf("Matrix:\n");
-    for (int i = 0; i < MAX_SIZE; i++) {
-        for (int j = 0; j < MAX_SIZE; j++) {
-            printf("%d ", matrix[i * MAX_SIZE + j]);
-        }
-        printf("\n");
-    }
-    */
-    // Calculate determinant using Laplace expansion
+    clock_t start, end;
+    double time_passed;
+    start = clock();
     int determinant = laplaceDet(matrix, MAX_SIZE);
+    end = clock();
     printf("Determinant: %d\n", determinant);
+    time_passed = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("Time passed: %f", time_passed);
     return 0;
 }
 
@@ -86,8 +82,8 @@ int laplaceDet(int* matrix, int n) {
     }
 
     for(int i = 0; i < NUM_THREADS; i++) {
-        determinant += thread_data[i]->result;
         pthread_join(tid[i], NULL);
+        determinant += thread_data[i]->result;
         free(thread_data[i]);
     }
     return determinant;
@@ -104,63 +100,57 @@ void* calcDet(void* arg) {
 
     for(int i = 0; i < MAX_SIZE/NUM_THREADS; i++) {
         if(i % 2 == 0){
-            data->result += calcRec(matrix, 0, 0, column);
+            data->result += calcRec(matrix, 0, column + i, column);
         } else {
-            data->result -= calcRec(matrix, 0, 0, column);
+            data->result -= calcRec(matrix, 0, column + i, column);
         }
     }
     pthread_exit(NULL);
 }
 
-int calcRec(int *matrix, int row, int column, int tid){
-    int n = MAX_SIZE - row;
-    int determinant = 0;
+/*
+        0 1 0 0
+        0 0 0 0  (1,0)
+        0 0 0 0
+        0 0 0 0
+
+*/
+int calcRec(int *matrix, int row, int column, int tid){ //(x,y) of the matrix element that's determinant is being calculated is (column, row)
+    int edge_size = MAX_SIZE - row;                             //since the matrix is square shaped, top-left corner will always be (row, row)
+    long determinant = 0;                                //the column will dictate what index not to take
     // Base case: determinant of 1x1 matrix is the element itself
-    if (n == 1) {
-        determinant = matrix[0];
+    if (edge_size == 1) {
+        //printf("tid = %d: n = %d: index = 0: m = %d\n", tid, edge_size, matrix[0]);
+        return matrix[0];
     } else {
-        int* temp = malloc((n - 1) * (n - 1) * sizeof(int));
+        int* temp = malloc((edge_size - 1) * (edge_size - 1) * sizeof(int));
         if (temp == NULL) {
             perror("Memory allocation failed");
             exit(EXIT_FAILURE);
         }
-        for (int i = 1, temp_row = 0; i < n; i++, temp_row++) {
-            
-            for (int j = 0, temp_col = 0; j < n; j++) {
-                if (j != column) {
-                    temp[temp_row * (n - 1) + temp_col] = matrix[i * n + j];
-                    temp_col++;
+        for (int oldRow = 1, newRow = 0; oldRow < edge_size; oldRow++, newRow++) {
+            for (int oldColumn = 0, newColumn = 0; oldColumn < edge_size; oldColumn++) {
+                if (oldColumn != column) {
+                    temp[newRow * (edge_size - 1) + newColumn] = matrix[oldRow * edge_size + oldColumn];
+                    newColumn++;
                 }
             }
-
-/*
-3 6 7 5 
-3 5 6 2 
-9 1 2 7 
-0 9 3 6 
-        5 6 2
-3 ->    1 2 7   
-        9 3 6
-
-5 ->    2 7         6-> 1 7         2-> 1 2
-        3 6             9 6             9 3
-
-2-> 6   7->3        1->6    7->9        1->3    2->9
-
-*/
         }
-        for(int a = 0; a < (n-1); a++){
-            for(int b = 0; b < n-1; b++)
-            printf("tid = %d: n = %d: m = %d\n", tid, n, temp[a*(n-1)+b]);
-        }
-        printf("\n");
-        for(int i = 0; i < n; i++){
-            if(i % 2 == 0) {
-                determinant += calcRec(temp, row + 1, column + i, tid);
-            } else {
-                determinant -= calcRec(temp, row + 1, column + i, tid);
+
+        for(int a = 0; a < (edge_size - 1); a++){
+            for(int b = 0; b < edge_size -1; b++){
+                //printf("tid = %d: n = %d: index = %d: m = %d\n", tid, edge_size, a*(edge_size - 1)+b, temp[a*(edge_size - 1)+b]);
             }
         }
+        //printf("\n");
+        for(int i = 0; i < edge_size - 1; i++){
+            if(i % 2 == 0) {
+                determinant += calcRec(temp, row + 1, i, tid);
+            } else {
+                determinant -= calcRec(temp, row + 1, i, tid);
+            }
+        }
+        free(temp);
     }
     return determinant;
 }
