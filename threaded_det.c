@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <time.h>
 
-#define MAX_SIZE 4
+#define MAX_SIZE 8
 #define NUM_THREADS 1
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -94,15 +94,16 @@ void* calcDet(void* arg) {
     int column = data->column;
     int *visited = data-> visited;
     // Store the partial result in the data structure
-
+    
     for(int i = 0; i < MAX_SIZE/NUM_THREADS; i++) {
-        printf("0, %d : %d\n", column+i, matrix[i]);
+        //printf("K = %d, 0, %d : %d\n", i, column+i, matrix[i]);
         if(i % 2 == 0){
             data->result += calcRec(matrix, 0, column + i, visited);
         } else {
             data->result -= calcRec(matrix, 0, column + i, visited);
         }
     }
+
     pthread_exit(NULL);
 }
 
@@ -112,7 +113,7 @@ int calcRec(int *matrix, int row, int column, int* visited){ //(x,y) of the matr
     visited[row] = column;
     // Base case: determinant of 1x1 matrix is the element itself
     if (edge_size == 1) {
-        printf("n = %d: index = 0: m = %d\n", edge_size, matrix[row * MAX_SIZE + column]);
+        //printf("n = %d: index = 0: m = %d\n", edge_size, matrix[row * MAX_SIZE + column]);
         return matrix[row * MAX_SIZE + column];
     } else {
         for(int i = 0, k = 0; i < MAX_SIZE; i++){
@@ -123,8 +124,9 @@ int calcRec(int *matrix, int row, int column, int* visited){ //(x,y) of the matr
                 }
             }
             if(f == 1){
-                printf("K = %d, %d, %d : %d\n", k, row+1, i, matrix[(row+1)*MAX_SIZE +i]);
-                int cofactor = calcRec(matrix, row + 1, i, visited);
+                //printf("K = %d, %d, %d : %d\n", k, row+1, i, matrix[(row+1)*MAX_SIZE +i]);
+                int cofactor;
+                cofactor = calcRec(matrix, row + 1, i, visited);
                 if(k % 2 == 0){
                     determinant += matrix[row * MAX_SIZE + i] * cofactor;
                 } else {
