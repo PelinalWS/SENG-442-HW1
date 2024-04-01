@@ -129,11 +129,10 @@ int calcRec(int *matrix, int row, int column, int tid){
             for (int j = 0, temp_col = 0; j < n; j++) {
                 if (j != column) {
                     temp[temp_row * (n - 1) + temp_col] = matrix[i * n + j];
-                    printf("|%d : %d| ", tid, matrix[i*n +j]);
                     temp_col++;
                 }
-                printf("\n");
             }
+
 /*
 3 6 7 5 
 3 5 6 2 
@@ -150,6 +149,11 @@ int calcRec(int *matrix, int row, int column, int tid){
 
 */
         }
+        for(int a = 0; a < (n-1); a++){
+            for(int b = 0; b < n-1; b++)
+            printf("tid = %d: n = %d: m = %d\n", tid, n, temp[a*(n-1)+b]);
+        }
+        printf("\n");
         for(int i = 0; i < n; i++){
             if(i % 2 == 0) {
                 determinant += calcRec(temp, row + 1, column + i, tid);
