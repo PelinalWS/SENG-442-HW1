@@ -3,8 +3,8 @@
 #include <pthread.h>
 #include <time.h>
 
-#define MAX_SIZE 8
-#define NUM_THREADS 1
+#define MAX_SIZE 32
+#define NUM_THREADS 48
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -27,12 +27,15 @@ int main() {
     int* matrix = readMatrix("det.txt");
     clock_t start, end;
     double time_passed;
-    start = clock();
-    int determinant = laplaceDet(matrix, MAX_SIZE);
-    end = clock();
-    printf("Determinant: %d\n", determinant);
-    time_passed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Time passed: %f", time_passed);
+    for(int i = 0; i<10;i++){
+        start = clock();
+        int determinant = laplaceDet(matrix, MAX_SIZE);
+        end = clock();
+        //printf("Determinant: %d\n", determinant);
+        time_passed = ((double) (end - start)) / CLOCKS_PER_SEC;
+    }
+    time_passed = time_passed/10;
+    printf("%f", time_passed);
     return 0;
 }
 
@@ -56,7 +59,7 @@ int* readMatrix(char* filename){
         printf("File couldn't be opened.\n");
         return NULL;
     } else {
-        printf("File opened, initiating determinant calculation...\n");
+        //printf("File opened, initiating determinant calculation...\n");
         int *matrix = malloc(MAX_SIZE * MAX_SIZE * sizeof(int));
         int i = 0;
         while(fscanf(f, "%d ", &matrix[i]) == 1 && i < MAX_SIZE * MAX_SIZE){
@@ -81,8 +84,8 @@ int laplaceDet(int* matrix, int n) {
     }
 
     for(int i = 0; i < NUM_THREADS; i++) {
-        pthread_join(tid[i], NULL);
         determinant += thread_data[i]->result;
+        pthread_join(tid[i], NULL);
         free(thread_data[i]);
     }
     return determinant;
@@ -109,7 +112,7 @@ void* calcDet(void* arg) {
 
 int calcRec(int *matrix, int row, int column, int* visited){ //(x,y) of the matrix element that's determinant is being calculated is (column, row)
     int edge_size = MAX_SIZE - row;                             //since the matrix is square shaped, top-left corner will always be (row, row)
-    long determinant = 0;                                //the column will dictate what index not to take
+    int determinant = 0;                                //the column will dictate what index not to take
     visited[row] = column;
     // Base case: determinant of 1x1 matrix is the element itself
     if (edge_size == 1) {
@@ -132,6 +135,9 @@ int calcRec(int *matrix, int row, int column, int* visited){ //(x,y) of the matr
                 } else {
                     determinant -= matrix[row * MAX_SIZE + i] * cofactor;
                 }
+                //printf("%d\n", cofactor);
+                //printf("%d\n", determinant);
+
                 k++;
             }
         }
